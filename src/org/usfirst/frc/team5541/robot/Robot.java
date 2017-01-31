@@ -5,6 +5,8 @@ import com.ctre.CANTalon;
 import edu.wpi.first.wpilibj.IterativeRobot;
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.RobotDrive;
+import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 /**
  * The VM is configured to automatically run this class, and to call the
@@ -14,69 +16,98 @@ import edu.wpi.first.wpilibj.RobotDrive;
  * directory.
  */
 public class Robot extends IterativeRobot {
-	RobotDrive myRobot;
+	RobotDrive robot;
 	
-	Joystick driver;
+	Joystick stick;
+	
+	int index_rightTalon = 1;
+	int index_rightSlaveTalon = 2;
+	int index_leftTalon = 3;
+	int index_leftSlaveTalon = 4;
+	
 	int autoLoopCounter;
-	int rightTalonIndex = 1;
-	int rightSlaveTalonIndex = 2;
-	int leftTalonIndex = 3;
-	int leftSlaveTalonIndex = 4;
 	
-	@Override
-	public void robotInit() {	
-		driver = new Joystick(0);
-    	
-    	CANTalon rightTalon = new CANTalon(rightTalonIndex);
-    	CANTalon rightSlaveTalon = new CANTalon(rightSlaveTalonIndex);
-    	CANTalon leftTalon = new CANTalon(leftTalonIndex);
-    	CANTalon leftSlaveTalon = new CANTalon(leftSlaveTalonIndex);
-    	
-    	
-    	myRobot = new RobotDrive(rightTalon, rightSlaveTalon, leftTalon, leftSlaveTalon);
-    }
-    
-    /**
-     * This function is run once each time the robot enters autonomous mode
-     */
-	@Override
-    public void autonomousInit() {
-    	autoLoopCounter = 0;
-    }
+	final String defaultAuto = "Default";
+	final String customAuto = "My Auto";
+	String autoSelected;
+	SendableChooser<String> chooser = new SendableChooser<>();
 
-    /**
-     * This function is called periodically during autonomous
-     */
+	/**
+	 * This function is run when the robot is first started up and should be
+	 * used for any initialization code.
+	 */
 	@Override
-    public void autonomousPeriodic() {
-    	if(autoLoopCounter < 150) //Check if we've completed 100 loops (approximately 2 seconds)
-		{
-			myRobot.drive(1, 1); 	// drive forwards half speed
-			autoLoopCounter++;
-		} else {
-			myRobot.drive(0.0, 0.0); 	// stop robot
+	public void robotInit() {
+		chooser.addDefault("Default Auto", defaultAuto);
+		chooser.addObject("My Auto", customAuto);
+		SmartDashboard.putData("Auto choices", chooser);
+		
+		stick = new Joystick(0);
+		
+		CANTalon rightTalon = new CANTalon(index_rightTalon);
+		CANTalon rightSlaveTalon = new CANTalon(index_rightSlaveTalon);
+		CANTalon leftTalon = new CANTalon(index_leftTalon);
+		CANTalon leftSlaveTalon = new CANTalon(index_leftSlaveTalon);
+		
+		robot = new RobotDrive(rightTalon, rightSlaveTalon, leftTalon, leftSlaveTalon);
+	}
+
+	/**
+	 * This autonomous (along with the chooser code above) shows how to select
+	 * between different autonomous modes using the dashboard. The sendable
+	 * chooser code works with the Java SmartDashboard. If you prefer the
+	 * LabVIEW Dashboard, remove all of the chooser code and uncomment the
+	 * getString line to get the auto name from the text box below the Gyro
+	 *
+	 * You can add additional auto modes by adding additional comparisons to the
+	 * switch structure below with additional strings. If using the
+	 * SendableChooser make sure to add them to the chooser code above as well.
+	 */
+	@Override
+	public void autonomousInit() {
+		
+		autoLoopCounter = 0;
+		
+		autoSelected = chooser.getSelected();
+		// autoSelected = SmartDashboard.getString("Auto Selector",
+		// defaultAuto);
+		System.out.println("Auto selected: " + autoSelected);
+	}
+
+	/**
+	 * This function is called periodically during autonomous
+	 */
+	@Override
+	public void autonomousPeriodic() {
+		switch (autoSelected) {
+		case customAuto:
+			if(autoLoopCounter < 150) {
+				robot.drive(1, 0);
+				autoLoopCounter++;
+			} else {
+				robot.drive(0, 0);
+			}
+			break;
+		case defaultAuto:
+		default:
+			// By default no Autonomous
+			break;
 		}
-    }
-    
-    /**
-     * This function is called once each time the robot enters
-     * tele-operated mode
-     */
-	@Override
-    public void teleopInit(){}
+	}
 
-    /**
-     * This function is called periodically during operator control
-     */
+	/**
+	 * This function is called periodically during operator control
+	 */
 	@Override
-    public void teleopPeriodic() {
-        myRobot.tankDrive(-(driver.getRawAxis(1)), (driver.getRawAxis(5)));
-    }
-    
-    /**
-     * This function is called periodically during test mode
-     */
+	public void teleopPeriodic() {
+		robot.tankDrive(stick.getRawAxis(1), stick.getRawAxis(5));
+	}
+
+	/**
+	 * This function is called periodically during test mode
+	 */
 	@Override
-    public void testPeriodic() {}
-    
+	public void testPeriodic() {
+	}
 }
+
