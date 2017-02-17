@@ -1,12 +1,19 @@
 package org.usfirst.frc.team5541.robot;
 
+import org.opencv.core.Rect;
+import org.opencv.imgproc.Imgproc;
+
 import com.ctre.CANTalon;
 
+import edu.wpi.cscore.CvSource;
+import edu.wpi.cscore.UsbCamera;
+import edu.wpi.first.wpilibj.CameraServer;
 import edu.wpi.first.wpilibj.IterativeRobot;
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.RobotDrive;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.wpilibj.vision.VisionThread;
 
 /**
  * The VM is configured to automatically run this class, and to call the
@@ -19,30 +26,79 @@ public class Robot extends IterativeRobot {
 	RobotDrive robot;
 	
 	Joystick stick;
+	//Joystick flight;
 	
 	int index_rightTalon = 1;
 	int index_rightSlaveTalon = 2;
 	int index_leftTalon = 3;
 	int index_leftSlaveTalon = 4;
 	
-	int autoLoopCounter;
-	
 	final String defaultAuto = "Default";
 	final String customAuto = "My Auto";
 	String autoSelected;
 	SendableChooser<String> chooser = new SendableChooser<>();
 
+	private VisionThread visionThread;
+	private double centerX = 0.0;
+	private final int cam_WIDTH = 640;
+	private final int cam_HEIGHT = 480;
+	
+	private final Object imgLock = new Object();
 	/**
 	 * This function is run when the robot is first started up and should be
 	 * used for any initialization code.
 	 */
 	@Override
 	public void robotInit() {
+		
+		//UsbCamera camera = CameraServer.getInstance().startAutomaticCapture(0);
+		//UsbCamera camera2 = CameraServer.getInstance().startAutomaticCapture(1);
+        //camera.setResolution(640, 480);
+        
+        /*
+		new Thread(() -> {
+            UsbCamera camera = CameraServer.getInstance().startAutomaticCapture();
+            camera.setResolution(640, 480);
+            
+            CvSink cvSink = CameraServer.getInstance().getVideo();
+            CvSource outputStream = CameraServer.getInstance().putVideo("Blur", 640, 480);
+            
+            Mat source = new Mat();
+            Mat output = new Mat();
+            
+            while(!Thread.interrupted()) {
+                cvSink.grabFrame(source);
+                Imgproc.cvtColor(source, output, Imgproc.COLOR_BGR2GRAY);
+                outputStream.putFrame(output);
+            }
+        }).start();
+		*/
+		
+		UsbCamera camera = CameraServer.getInstance().startAutomaticCapture(0);
+		UsbCamera camera2 = CameraServer.getInstance().startAutomaticCapture(1);
+	    camera.setResolution(cam_WIDTH, cam_HEIGHT);
+	    camera2.setResolution(cam_WIDTH, cam_HEIGHT);
+	    
+	    CvSource outputStream = CameraServer.getInstance().putVideo("Computer Vision", cam_WIDTH, cam_HEIGHT);
+	    
+	    visionThread = new VisionThread(camera, new GripPipeline(), pipeline -> {
+	    	
+	        if (!pipeline.filterContoursOutput().isEmpty()) {
+	            Rect r = Imgproc.boundingRect(pipeline.filterContoursOutput().get(0));
+	            synchronized (imgLock) {
+	                centerX = r.x + (r.width / 2);
+	                outputStream.putFrame(pipeline.hsvThresholdOutput());
+	            }
+	        }
+	    });
+	    visionThread.start();
+        
 		chooser.addDefault("Default Auto", defaultAuto);
 		chooser.addObject("My Auto", customAuto);
 		SmartDashboard.putData("Auto choices", chooser);
 		
 		stick = new Joystick(0);
+		//flight = new Joystick(1);
 		
 		CANTalon rightTalon = new CANTalon(index_rightTalon);
 		CANTalon rightSlaveTalon = new CANTalon(index_rightSlaveTalon);
@@ -63,6 +119,11 @@ public class Robot extends IterativeRobot {
 	 * switch structure below with additional strings. If using the
 	 * SendableChooser make sure to add them to the chooser code above as well.
 	 */
+	int autoLoopCounter;
+	final int STAGE_STRAIGHT_1 = 100;
+	final int STAGE_TURN_RIGHT_1 = STAGE_STRAIGHT_1 + 100;
+	final int STAGE_STRAIGHT_2 = STAGE_TURN_RIGHT_1 + 50;
+	
 	@Override
 	public void autonomousInit() {
 		
@@ -77,20 +138,41 @@ public class Robot extends IterativeRobot {
 	/**
 	 * This function is called periodically during autonomous
 	 */
+	
+	
 	@Override
 	public void autonomousPeriodic() {
 		switch (autoSelected) {
 		case customAuto:
-			if(autoLoopCounter < 150) {
-				robot.drive(1, 0);
-				autoLoopCounter++;
+			//100 Loops is roughly 2 seconds
+			autoLoopCounter++;
+			if(autoLoopCounter <= STAGE_STRAIGHT_1) {
+				//Stage 1, Straight half speed for 2 seconds
+				robot.drive(-0.5, 0);
+			} else if(autoLoopCounter > STAGE_STRAIGHT_1 &&
+					autoLoopCounter <= STAGE_TURN_RIGHT_1) {
+				//Stage 2, Turn 90 degrees right for ? seconds
+				//0.5 speed, 0.5 turn = 360
+				//0.25 speed, 0.3 turn = 90
+				robot.drive(-0.25, 0.3);
+				
+			} else if(autoLoopCounter > STAGE_TURN_RIGHT_1 &&
+					autoLoopCounter <= STAGE_STRAIGHT_2) {
+				//Stage 3, Straight for 1 seconds
+				robot.drive(-0.5, 0);
 			} else {
+				//Stop robot
 				robot.drive(0, 0);
 			}
 			break;
 		case defaultAuto:
 		default:
-			// By default no Autonomous
+			double centerX;
+			synchronized (imgLock) {
+				centerX = this.centerX;
+			}
+			double turn = centerX - (cam_WIDTH / 2);
+			robot.drive(-0.01, turn * 0.005);
 			break;
 		}
 	}
@@ -100,7 +182,9 @@ public class Robot extends IterativeRobot {
 	 */
 	@Override
 	public void teleopPeriodic() {
+		//robot.arcadeDrive(flight);
 		robot.tankDrive(stick.getRawAxis(1), stick.getRawAxis(5));
+		//flight stick, 0 x axis, 1 y axis
 	}
 
 	/**
