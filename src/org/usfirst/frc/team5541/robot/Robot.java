@@ -147,26 +147,11 @@ public class Robot extends IterativeRobot {
 	public void autonomousPeriodic() {
 		switch (autoSelected) {
 		case customAuto:
-			//100 Loops is roughly 2 seconds
+			//Benchmark
 			autoLoopCounter++;
-			if(autoLoopCounter <= STAGE_STRAIGHT_1) {
-				//Stage 1, Straight half speed for 2 seconds
-				robot.drive(-0.5, 0);
-			} else if(autoLoopCounter > STAGE_STRAIGHT_1 &&
-					autoLoopCounter <= STAGE_TURN_RIGHT_1) {
-				//Stage 2, Turn 90 degrees right for ? seconds
-				//0.5 speed, 0.5 turn = 360
-				//0.25 speed, 0.3 turn = 90
-				robot.drive(-0.25, 0.3);
-				
-			} else if(autoLoopCounter > STAGE_TURN_RIGHT_1 &&
-					autoLoopCounter <= STAGE_STRAIGHT_2) {
-				//Stage 3, Straight for 1 seconds
-				robot.drive(-0.5, 0);
-			} else {
-				//Stop robot
-				robot.drive(0, 0);
-			}
+			
+			robot.drive(-1, 0);
+			
 			break;
 		case defaultAuto:
 		default:
@@ -204,7 +189,8 @@ public class Robot extends IterativeRobot {
 	@Override
 	public void teleopPeriodic() {
 		//robot.arcadeDrive(flight);
-		robot.tankDrive(stick.getRawAxis(1), stick.getRawAxis(5));
+		//robot.tankDrive(stick.getRawAxis(1), stick.getRawAxis(5));
+		robot.arcadeDrive(stick);
 		//flight stick, 0 x axis, 1 y axis
 	}
 
