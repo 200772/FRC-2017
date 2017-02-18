@@ -124,8 +124,12 @@ public class Robot extends IterativeRobot {
 	final int STAGE_TURN_RIGHT_1 = STAGE_STRAIGHT_1 + 100;
 	final int STAGE_STRAIGHT_2 = STAGE_TURN_RIGHT_1 + 50;
 	
+	boolean stopped;
+	
 	@Override
 	public void autonomousInit() {
+		
+		stopped = false;
 		
 		autoLoopCounter = 0;
 		
@@ -138,7 +142,6 @@ public class Robot extends IterativeRobot {
 	/**
 	 * This function is called periodically during autonomous
 	 */
-	
 	
 	@Override
 	public void autonomousPeriodic() {
@@ -167,12 +170,31 @@ public class Robot extends IterativeRobot {
 			break;
 		case defaultAuto:
 		default:
+			
+			if(stopped) { return; }
+			
 			double centerX;
+			double speed = -0.01;
 			synchronized (imgLock) {
 				centerX = this.centerX;
 			}
 			double turn = centerX - (cam_WIDTH / 2);
-			robot.drive(-0.01, turn * 0.005);
+			double turn_converted = turn * 0.005;
+			
+			double turn_threashold = 0.4;
+			
+			if(Math.abs(turn_converted) > turn_threashold) {
+				if(turn_converted < 0) { turn_converted = -turn_threashold; }
+				if(turn_converted > 0) { turn_converted = turn_threashold; }
+			}
+			if(Math.abs(turn_converted) < 0.1) {
+				speed = 0;
+				turn_converted = 0;
+				stopped = true;
+			}
+			
+			robot.arcadeDrive(-0.01, turn_converted);
+			System.out.println(turn + " : " + (turn_converted));
 			break;
 		}
 	}
