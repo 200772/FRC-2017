@@ -180,7 +180,6 @@ public class Robot extends IterativeRobot {
 			}
 			double turn = centerX - (cam_WIDTH / 2);
 			double turn_converted = turn * 0.005;
-			
 			double turn_threashold = 0.4;
 			
 			if(Math.abs(turn_converted) > turn_threashold) {
