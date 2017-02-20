@@ -33,15 +33,16 @@ public class Robot extends IterativeRobot {
 	int index_leftTalon = 3;
 	int index_leftSlaveTalon = 4;
 	
-	final String defaultAuto = "Default";
-	final String customAuto = "My Auto";
+	final String defaultAuto = "right";
+	final String customAuto = "left";
+	final String customAuto2 = "straight";
 	String autoSelected;
 	SendableChooser<String> chooser = new SendableChooser<>();
 
 	private VisionThread visionThread;
 	private double centerX = 0.0;
-	private final int cam_WIDTH = 640;
-	private final int cam_HEIGHT = 480;
+	private final int cam_WIDTH = 320;
+	private final int cam_HEIGHT = 240;
 	
 	private final Object imgLock = new Object();
 	/**
@@ -93,8 +94,9 @@ public class Robot extends IterativeRobot {
 	    });
 	    visionThread.start();
         
-		chooser.addDefault("Default Auto", defaultAuto);
-		chooser.addObject("My Auto", customAuto);
+		chooser.addDefault("Right", defaultAuto);
+		chooser.addObject("Left", customAuto);
+		chooser.addObject("Straight", customAuto2);
 		SmartDashboard.putData("Auto choices", chooser);
 		
 		stick = new Joystick(0);
@@ -120,9 +122,6 @@ public class Robot extends IterativeRobot {
 	 * SendableChooser make sure to add them to the chooser code above as well.
 	 */
 	int autoLoopCounter;
-	final int STAGE_STRAIGHT_1 = 100;
-	final int STAGE_TURN_RIGHT_1 = STAGE_STRAIGHT_1 + 100;
-	final int STAGE_STRAIGHT_2 = STAGE_TURN_RIGHT_1 + 50;
 	
 	boolean stopped;
 	
@@ -146,17 +145,52 @@ public class Robot extends IterativeRobot {
 	@Override
 	public void autonomousPeriodic() {
 		switch (autoSelected) {
-		case customAuto:
-			//Benchmark
+		case customAuto2:
 			autoLoopCounter++;
 			
-			robot.drive(-1, 0);
+			if(autoLoopCounter <= 65) {
+				robot.drive(-0.5, 0);
+			}
+			
+			break;
+		case customAuto:
+			autoLoopCounter++;
+			
+			if(autoLoopCounter <= 58) {
+				robot.drive(-0.6, 0);
+			} 
+			if(autoLoopCounter > 58 
+					&& autoLoopCounter <= 78) {
+				robot.drive(-0.5, -0.9);
+			} 
+			if(autoLoopCounter > 78 
+					&& autoLoopCounter <= 98) {
+				robot.drive(-0.5, 0);
+			}
 			
 			break;
 		case defaultAuto:
 		default:
+			autoLoopCounter++;
 			
-			if(stopped) { return; }
+			if(stopped) {
+				if(autoLoopCounter <= 75) {
+					robot.drive(-0.25, 0);
+				}
+				return;
+			}
+			
+			if(autoLoopCounter <= 58) {
+				robot.drive(-0.6, 0);
+			} 
+			if(autoLoopCounter > 58 
+					&& autoLoopCounter <= 78) {
+				robot.drive(-0.5, 0.9);
+			} 
+			if(autoLoopCounter > 78 
+					&& autoLoopCounter <= 85) {
+				robot.drive(-0.5, 0);
+			}
 			
 			double centerX;
 			double speed = -0.01;
@@ -175,10 +209,11 @@ public class Robot extends IterativeRobot {
 				speed = 0;
 				turn_converted = 0;
 				stopped = true;
+				autoLoopCounter = 0;
 			}
 			
-			robot.arcadeDrive(-0.01, turn_converted);
-			System.out.println(turn + " : " + (turn_converted));
+			robot.arcadeDrive(speed, turn_converted);
+			//System.out.println(turn + " : " + (turn_converted));
 			break;
 		}
 	}
@@ -189,8 +224,8 @@ public class Robot extends IterativeRobot {
 	@Override
 	public void teleopPeriodic() {
 		//robot.arcadeDrive(flight);
-		//robot.tankDrive(stick.getRawAxis(1), stick.getRawAxis(5));
-		robot.arcadeDrive(stick);
+		robot.tankDrive(stick.getRawAxis(1), stick.getRawAxis(5));
+		//robot.arcadeDrive(stick);
 		//flight stick, 0 x axis, 1 y axis
 	}
 
