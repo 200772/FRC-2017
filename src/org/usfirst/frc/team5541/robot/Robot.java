@@ -171,11 +171,12 @@ public class Robot extends IterativeRobot {
 			break;
 		case defaultAuto:
 		default:
+			//50 ~ 1 second
 			autoLoopCounter++;
 			
 			if(stopped) {
-				if(autoLoopCounter <= 75) {
-					robot.drive(-0.25, 0);
+				if(autoLoopCounter <= 160) {
+					robot.drive(-0.15, 0);
 				}
 				return;
 			}
@@ -188,31 +189,37 @@ public class Robot extends IterativeRobot {
 				robot.drive(-0.5, 0.9);
 			} 
 			if(autoLoopCounter > 78 
-					&& autoLoopCounter <= 85) {
+					&& autoLoopCounter <= 88) {
 				robot.drive(-0.5, 0);
 			}
-			
-			double centerX;
-			double speed = -0.01;
-			synchronized (imgLock) {
-				centerX = this.centerX;
+			if(autoLoopCounter > 88 
+					&& autoLoopCounter <= 120) {
+				//Do nothing
+				System.out.println("Pause before search");
 			}
-			double turn = centerX - (cam_WIDTH / 2);
-			double turn_converted = turn * 0.005;
-			double turn_threashold = 0.4;
-			
-			if(Math.abs(turn_converted) > turn_threashold) {
-				if(turn_converted < 0) { turn_converted = -turn_threashold; }
-				if(turn_converted > 0) { turn_converted = turn_threashold; }
+			if(autoLoopCounter > 120) {
+				double centerX;
+				double speed = -0.01;
+				synchronized (imgLock) {
+					centerX = this.centerX;
+				}
+				double turn = centerX - (cam_WIDTH / 2);
+				double turn_converted = turn * 0.005;
+				double turn_threashold = 0.4;
+				
+				if(Math.abs(turn_converted) > turn_threashold) {
+					if(turn_converted < 0) { turn_converted = -turn_threashold; }
+					if(turn_converted > 0) { turn_converted = turn_threashold; }
+				}
+				if(Math.abs(turn_converted) < 0.08) {
+					speed = 0;
+					turn_converted = 0;
+					stopped = true;
+					autoLoopCounter = 0;
+				}
+				
+				robot.arcadeDrive(speed, turn_converted);
 			}
-			if(Math.abs(turn_converted) < 0.1) {
-				speed = 0;
-				turn_converted = 0;
-				stopped = true;
-				autoLoopCounter = 0;
-			}
-			
-			robot.arcadeDrive(speed, turn_converted);
 			//System.out.println(turn + " : " + (turn_converted));
 			break;
 		}
