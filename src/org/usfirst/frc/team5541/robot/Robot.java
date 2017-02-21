@@ -11,6 +11,7 @@ import edu.wpi.first.wpilibj.CameraServer;
 import edu.wpi.first.wpilibj.IterativeRobot;
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.RobotDrive;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.vision.VisionThread;
@@ -36,6 +37,8 @@ public class Robot extends IterativeRobot {
 	final String defaultAuto = "right";
 	final String customAuto = "left";
 	final String customAuto2 = "straight";
+	final String customAuto3 = "ultimate";
+
 	String autoSelected;
 	SendableChooser<String> chooser = new SendableChooser<>();
 
@@ -97,6 +100,8 @@ public class Robot extends IterativeRobot {
 		chooser.addDefault("Right", defaultAuto);
 		chooser.addObject("Left", customAuto);
 		chooser.addObject("Straight", customAuto2);
+		chooser.addObject("Ultimate", customAuto3);
+
 		SmartDashboard.putData("Auto choices", chooser);
 		
 		stick = new Joystick(0);
@@ -121,7 +126,8 @@ public class Robot extends IterativeRobot {
 	 * switch structure below with additional strings. If using the
 	 * SendableChooser make sure to add them to the chooser code above as well.
 	 */
-	int autoLoopCounter;
+	
+	Timer timer = new Timer();
 	
 	boolean stopped;
 	
@@ -130,7 +136,7 @@ public class Robot extends IterativeRobot {
 		
 		stopped = false;
 		
-		autoLoopCounter = 0;
+		timer.start();
 		
 		autoSelected = chooser.getSelected();
 		// autoSelected = SmartDashboard.getString("Auto Selector",
@@ -145,59 +151,64 @@ public class Robot extends IterativeRobot {
 	@Override
 	public void autonomousPeriodic() {
 		switch (autoSelected) {
+		
+		//Straight to pin
 		case customAuto2:
-			autoLoopCounter++;
 			
-			if(autoLoopCounter <= 65) {
+			if(timer.get() <= 1.3) {
 				robot.drive(-0.5, 0);
 			}
 			
 			break;
-		case customAuto:
-			autoLoopCounter++;
 			
-			if(autoLoopCounter <= 58) {
+		//on the right side of the field
+		case customAuto:
+			
+			if(timer.get() <= 1.16) {
 				robot.drive(-0.6, 0);
 			} 
-			if(autoLoopCounter > 58 
-					&& autoLoopCounter <= 78) {
+			if(timer.get() > 1.16 
+					&& timer.get() <= 1.56) {
 				robot.drive(-0.5, -0.9);
 			} 
-			if(autoLoopCounter > 78 
-					&& autoLoopCounter <= 98) {
+			if(timer.get() > 1.56 
+					&& timer.get() <= 2) {
 				robot.drive(-0.5, 0);
+			}
+			if(timer.get() > 2) {
+				robot.drive(0, 0);
 			}
 			
 			break;
+			
+		//on the left side of the field + vision processing
 		case defaultAuto:
 		default:
 			//50 ~ 1 second
-			autoLoopCounter++;
-			
 			if(stopped) {
-				if(autoLoopCounter <= 160) {
+				if(timer.get() <= 3.2) {
 					robot.drive(-0.15, 0);
 				}
 				return;
 			}
-			
-			if(autoLoopCounter <= 58) {
+			//wouldn't we add if stopped=false? 
+			if(timer.get() <= 1.36) {
 				robot.drive(-0.6, 0);
 			} 
-			if(autoLoopCounter > 58 
-					&& autoLoopCounter <= 78) {
+			if(timer.get() > 1.36 
+					&& timer.get() <= 1.76) {
 				robot.drive(-0.5, 0.9);
 			} 
-			if(autoLoopCounter > 78 
-					&& autoLoopCounter <= 88) {
+			if(timer.get() > 1.76 
+					&& timer.get() <= 1.96) {
 				robot.drive(-0.5, 0);
 			}
-			if(autoLoopCounter > 88 
-					&& autoLoopCounter <= 120) {
+			if(timer.get() > 1.96 
+					&& timer.get() <= 2.3) {
 				//Do nothing
 				System.out.println("Pause before search");
 			}
-			if(autoLoopCounter > 120) {
+			if(timer.get() > 2.3) {
 				double centerX;
 				double speed = -0.01;
 				synchronized (imgLock) {
@@ -215,12 +226,51 @@ public class Robot extends IterativeRobot {
 					speed = 0;
 					turn_converted = 0;
 					stopped = true;
-					autoLoopCounter = 0;
+					timer.reset();
 				}
-				
-				robot.arcadeDrive(speed, turn_converted);
 			}
 			//System.out.println(turn + " : " + (turn_converted));
+			break;
+			
+		//Intelligent autonomous
+		case customAuto3:
+			double centerX;
+			double direction = 1;
+			double timeToRun = 0;
+			
+			synchronized (imgLock){
+				centerX = this.centerX;
+			}
+			double distCenter = centerX - (cam_WIDTH/2);
+			
+			
+			if(distCenter > 0){
+				direction=1;
+			}
+			else if(distCenter < 0){
+				direction=-1;
+			}
+			
+			
+			if(timer.get()<0.4){ //should we do this like that? with an if timer < 0.4  to be sure the calcutions are not done twice? or is there some other method to do this?
+				double AngleToPin = Math.atan(distCenter/469.98);
+				double RealDisToPin = Math.tan( AngleToPin) / 72.87;
+				double heightPinTurnPoint = Math.tan(30) * RealDisToPin;
+				double heightBeforeTurn= 72.87 - heightPinTurnPoint;
+				timeToRun = 0.1452 * heightBeforeTurn; //0.1452 => value when robot was stopped
+			}
+			
+			
+			if(timer.get() <= timeToRun) {
+				robot.drive(-0.5, 0);
+			}
+			if(timer.get() <= timeToRun+0.4){
+				robot.drive(-0.5, direction * 0.9); //angular speed to be calculated!!!
+			}
+
+			//to add:   - detection of how big the marks are to evaluate distance
+			//			- adding alignment code (Jack)
+			
 			break;
 		}
 	}
