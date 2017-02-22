@@ -192,23 +192,23 @@ public class Robot extends IterativeRobot {
 				return;
 			}
 			//wouldn't we add if stopped=false? 
-			if(timer.get() <= 1.36) {
+			if(timer.get() <= 1.3) {
 				robot.drive(-0.6, 0);
 			} 
-			if(timer.get() > 1.36 
-					&& timer.get() <= 1.76) {
+			if(timer.get() > 1.3 
+					&& timer.get() <= 1.7) {
 				robot.drive(-0.5, 0.9);
 			} 
-			if(timer.get() > 1.76 
-					&& timer.get() <= 1.96) {
+			if(timer.get() > 1.7 
+					&& timer.get() <= 1.9) {
 				robot.drive(-0.5, 0);
 			}
-			if(timer.get() > 1.96 
-					&& timer.get() <= 2.3) {
+			if(timer.get() > 1.9 
+					&& timer.get() <= 2.24) {
 				//Do nothing
 				System.out.println("Pause before search");
 			}
-			if(timer.get() > 2.3) {
+			if(timer.get() > 2.24) {
 				double centerX;
 				double speed = -0.01;
 				synchronized (imgLock) {
