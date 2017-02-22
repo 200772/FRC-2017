@@ -228,6 +228,8 @@ public class Robot extends IterativeRobot {
 					stopped = true;
 					timer.reset();
 				}
+				robot.arcadeDrive(-0.01, turn_converted);
+
 			}
 			//System.out.println(turn + " : " + (turn_converted));
 			break;
@@ -241,7 +243,9 @@ public class Robot extends IterativeRobot {
 			synchronized (imgLock){
 				centerX = this.centerX;
 			}
-			double distCenter = centerX - (cam_WIDTH/2);
+			System.out.println("centerX :" + centerX);
+
+			/*double distCenter = centerX - (cam_WIDTH/2);
 			
 			
 			if(distCenter > 0){
@@ -252,22 +256,23 @@ public class Robot extends IterativeRobot {
 			}
 			
 			
-			if(timer.get()<0.4){ //should we do this like that? with an if timer < 0.4  to be sure the calcutions are not done twice? or is there some other method to do this?
+			//if(timer.get()<0.4){ //should we do this like that? with an if timer < 0.4  to be sure the calcutions are not done twice? or is there some other method to do this?
 				double AngleToPin = Math.atan(distCenter/469.98);
 				double RealDisToPin = Math.tan( AngleToPin) / 72.87;
 				double heightPinTurnPoint = Math.tan(30) * RealDisToPin;
 				double heightBeforeTurn= 72.87 - heightPinTurnPoint;
 				timeToRun = 0.1452 * heightBeforeTurn; //0.1452 => value when robot was stopped
-			}
+				System.out.println("time to run :" + timeToRun);
+			//} */
 			
-			
+			/*
 			if(timer.get() <= timeToRun) {
 				robot.drive(-0.5, 0);
 			}
 			if(timer.get() <= timeToRun+0.4){
 				robot.drive(-0.5, direction * 0.9); //angular speed to be calculated!!!
 			}
-
+*/
 			//to add:   - detection of how big the marks are to evaluate distance
 			//			- adding alignment code (Jack)
 			
