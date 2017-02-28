@@ -38,6 +38,7 @@ public class Robot extends IterativeRobot {
 	final String customAuto = "left";
 	final String customAuto2 = "straight";
 	final String customAuto3 = "ultimate";
+	final String visionTesting = "vision";
 
 	String autoSelected;
 	SendableChooser<String> chooser = new SendableChooser<>();
@@ -54,30 +55,6 @@ public class Robot extends IterativeRobot {
 	 */
 	@Override
 	public void robotInit() {
-		
-		//UsbCamera camera = CameraServer.getInstance().startAutomaticCapture(0);
-		//UsbCamera camera2 = CameraServer.getInstance().startAutomaticCapture(1);
-        //camera.setResolution(640, 480);
-        
-        /*
-		new Thread(() -> {
-            UsbCamera camera = CameraServer.getInstance().startAutomaticCapture();
-            camera.setResolution(640, 480);
-            
-            CvSink cvSink = CameraServer.getInstance().getVideo();
-            CvSource outputStream = CameraServer.getInstance().putVideo("Blur", 640, 480);
-            
-            Mat source = new Mat();
-            Mat output = new Mat();
-            
-            while(!Thread.interrupted()) {
-                cvSink.grabFrame(source);
-                Imgproc.cvtColor(source, output, Imgproc.COLOR_BGR2GRAY);
-                outputStream.putFrame(output);
-            }
-        }).start();
-		*/
-		
 		UsbCamera camera = CameraServer.getInstance().startAutomaticCapture(0);
 		UsbCamera camera2 = CameraServer.getInstance().startAutomaticCapture(1);
 	    camera.setResolution(cam_WIDTH, cam_HEIGHT);
@@ -87,13 +64,18 @@ public class Robot extends IterativeRobot {
 	    
 	    visionThread = new VisionThread(camera, new GripPipeline(), pipeline -> {
 	    	
-	        if (!pipeline.filterContoursOutput().isEmpty()) {
-	            Rect r = Imgproc.boundingRect(pipeline.filterContoursOutput().get(0));
+	        if (pipeline.filterContoursOutput().size() == 2) {
+	            Rect a = Imgproc.boundingRect(pipeline.filterContoursOutput().get(0));
+	            Rect b = Imgproc.boundingRect(pipeline.filterContoursOutput().get(1));
 	            synchronized (imgLock) {
-	                centerX = r.x + (r.width / 2);
-	                outputStream.putFrame(pipeline.hsvThresholdOutput());
+	            	double aCenter = a.x + (a.width / 2);
+	            	double bCenter = b.x + (b.width / 2);
+	                centerX = (aCenter + bCenter) / 2;
 	            }
 	        }
+	        synchronized (imgLock) {
+	        	outputStream.putFrame(pipeline.cvErodeOutput());
+            }
 	    });
 	    visionThread.start();
         
@@ -101,6 +83,7 @@ public class Robot extends IterativeRobot {
 		chooser.addObject("Left", customAuto);
 		chooser.addObject("Straight", customAuto2);
 		chooser.addObject("Ultimate", customAuto3);
+		chooser.addObject("Vision", visionTesting);
 
 		SmartDashboard.putData("Auto choices", chooser);
 		
@@ -186,8 +169,8 @@ public class Robot extends IterativeRobot {
 		default:
 			//50 ~ 1 second
 			if(stopped) {
-				if(timer.get() <= 3.2) {
-					robot.drive(-0.15, 0);
+				if(timer.get() <= 2) {
+					robot.drive(-0.25, 0);
 				}
 				return;
 			}
@@ -222,13 +205,13 @@ public class Robot extends IterativeRobot {
 					if(turn_converted < 0) { turn_converted = -turn_threashold; }
 					if(turn_converted > 0) { turn_converted = turn_threashold; }
 				}
-				if(Math.abs(turn_converted) < 0.08) {
+				if(Math.abs(turn_converted) < 0.05) {
 					speed = 0;
 					turn_converted = 0;
 					stopped = true;
 					timer.reset();
 				}
-				robot.arcadeDrive(-0.01, turn_converted);
+				robot.arcadeDrive(speed, turn_converted);
 
 			}
 			//System.out.println(turn + " : " + (turn_converted));
@@ -275,6 +258,37 @@ public class Robot extends IterativeRobot {
 */
 			//to add:   - detection of how big the marks are to evaluate distance
 			//			- adding alignment code (Jack)
+			
+			break;
+		case visionTesting:
+			
+			if(stopped) {
+				if(timer.get() <= 2) {
+					robot.drive(-0.25, 0);
+				}
+				return;
+			}
+			
+			double centerX1;
+			double speed = -0.01;
+			synchronized (imgLock) {
+				centerX1 = this.centerX;
+			}
+			double turn = centerX1 - (cam_WIDTH / 2);
+			double turn_converted = turn * 0.005;
+			double turn_threashold = 0.4;
+			
+			if(Math.abs(turn_converted) > turn_threashold) {
+				if(turn_converted < 0) { turn_converted = -turn_threashold; }
+				if(turn_converted > 0) { turn_converted = turn_threashold; }
+			}
+			if(Math.abs(turn_converted) < 0.05) {
+				speed = 0;
+				turn_converted = 0;
+				stopped = true;
+				timer.reset();
+			}
+			robot.arcadeDrive(speed, turn_converted);
 			
 			break;
 		}
