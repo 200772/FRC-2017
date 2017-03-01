@@ -279,8 +279,7 @@ public class Robot extends IterativeRobot {
 			double turn_threashold = 0.4;
 			
 			if(Math.abs(turn_converted) > turn_threashold) {
-				if(turn_converted < 0) { turn_converted = -turn_threashold; }
-				if(turn_converted > 0) { turn_converted = turn_threashold; }
+				turn_converted = turn_converted<0?-turn_threashold:turn_threashold;
 			}
 			if(Math.abs(turn_converted) < 0.05) {
 				speed = 0;
