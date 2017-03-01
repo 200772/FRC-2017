@@ -1,6 +1,9 @@
 
 package org.usfirst.frc.team5541.robot;
 
+import java.util.ArrayList;
+
+import org.opencv.core.MatOfPoint;
 import org.opencv.core.Rect;
 import org.opencv.imgproc.Imgproc;
 
@@ -50,6 +53,8 @@ public class Robot extends IterativeRobot {
 	private final int cam_HEIGHT = 240;
 	
 	private final Object imgLock = new Object();
+	
+	private ArrayList<MatOfPoint> imageMats = new ArrayList<>();
 	/**
 	 * This function is run when the robot is first started up and should be
 	 * used for any initialization code.
@@ -65,13 +70,12 @@ public class Robot extends IterativeRobot {
 	    
 	    visionThread = new VisionThread(camera, new GripPipeline(), pipeline -> {
 	    	
-	        if (pipeline.filterContoursOutput().size() == 2) {
+	        if (pipeline.filterContoursOutput().size() > 0) {
 	            Rect a = Imgproc.boundingRect(pipeline.filterContoursOutput().get(0));
-	            Rect b = Imgproc.boundingRect(pipeline.filterContoursOutput().get(1));
 	            synchronized (imgLock) {
-	            	double aCenter = a.x + (a.width / 2);
-	            	double bCenter = b.x + (b.width / 2);
-	                centerX = (aCenter + bCenter) / 2;
+	            	centerX = a.x + (a.width / 2);
+	            	imageMats.clear();
+	            	imageMats.addAll(pipeline.filterContoursOutput());
 	            }
 	        }
 	        synchronized (imgLock) {
@@ -171,14 +175,17 @@ public class Robot extends IterativeRobot {
 		//on the left side of the field + vision processing
 		case defaultAuto:
 		default:
-			//50 ~ 1 second
+			//Jack's Autonomous
+			
+			//Drive forward when target is found
 			if(stopped) {
 				if(timer.get() <= 2) {
 					robot.drive(-0.25, 0);
 				}
 				return;
 			}
-			//wouldn't we add if stopped=false? 
+			
+			//Initial Routing to peg
 			if(timer.get() <= 1.3) {
 				robot.drive(-0.6, 0);
 			} 
@@ -196,26 +203,62 @@ public class Robot extends IterativeRobot {
 				System.out.println("Pause before search");
 			}
 			if(timer.get() > 2.24) {
+				//Vision Tracking
 				double centerX;
+				ArrayList<MatOfPoint> points;
 				double speed = -0.01;
+				
 				synchronized (imgLock) {
 					centerX = this.centerX;
+					points = (ArrayList<MatOfPoint>) this.imageMats.clone();
 				}
-				double turn = centerX - (cam_WIDTH / 2);
-				double turn_converted = turn * 0.005;
-				double turn_threashold = 0.4;
 				
-				if(Math.abs(turn_converted) > turn_threashold) {
-					if(turn_converted < 0) { turn_converted = -turn_threashold; }
-					if(turn_converted > 0) { turn_converted = turn_threashold; }
+				double turn = 0;
+				
+				//If amount of points is exactly 2 then continue
+				if(points.size() == 2) {
+					
+					//Check if the 2 points are similar enough to be the goal
+					Rect a = Imgproc.boundingRect(points.get(0));
+					Rect b = Imgproc.boundingRect(points.get(1));
+					
+					double give = 0.1;
+					//Check similar width
+					if(a.width + (a.width * give) > b.width &&
+							a.width - (a.width * give) < b.width) {
+						//Check similar height
+						if(a.height + (a.height * give) > b.height &&
+								a.height - (a.height * give) < b.height) {
+							//Both height and width are similar enough
+							//Find center point between the 2 rects
+							double ca = a.x + (a.width / 2);
+							double cb = b.x + (b.width / 2);
+							
+							double dual = (ca + cb) / 2;
+							
+							turn = dual - (cam_WIDTH / 2);
+							
+							stopped = true;
+							timer.reset();
+							
+						} else { turn = timer.get() % 2 == 0?50:-50; }
+					} else { turn = timer.get() % 2 == 0?50:-50; }
+					
+					/*
+					double turn_threashold = 0.4;
+					double turn_con = turn * 0.005;
+					
+					//If the turn size is greater than threashold then limit it
+					if(Math.abs(turn_con) > turn_threashold) {
+						turn = turn_con<0?-turn_threashold:turn_threashold;
+					}
+					*/
+				} else {
+					//Scan back and forth at 0.25 turn
+					turn = timer.get() % 2 == 0?30:-30;
 				}
-				if(Math.abs(turn_converted) < 0.05) {
-					speed = 0;
-					turn_converted = 0;
-					stopped = true;
-					timer.reset();
-				}
-				robot.arcadeDrive(speed, turn_converted);
+				
+				robot.arcadeDrive(speed, turn * 0.005);
 
 			}
 			//System.out.println(turn + " : " + (turn_converted));
@@ -223,6 +266,7 @@ public class Robot extends IterativeRobot {
 			
 		//Intelligent autonomous
 		case customAuto3:
+			//Arnaud's Autonomous
 			double centerX;
 			
 			synchronized (imgLock){
@@ -241,9 +285,9 @@ public class Robot extends IterativeRobot {
 			}
 			
 			if(timer.get()<0.4){ // all using trigonometry rules (SOH CAH TOA)
-				double angleToPin = Math.atan(distCenter/469.98); //when we use the tg formula we can find the length (in pixels) of the adjacent side of the triangle (adj=320/tg(34.25°)=469.98) which we use to find the angle between the the view to the center and the view of the point
+				double angleToPin = Math.atan(distCenter/469.98); //when we use the tg formula we can find the length (in pixels) of the adjacent side of the triangle (adj=320/tg(34.25 degree)=469.98) which we use to find the angle between the the view to the center and the view of the point
 				double realDisToPin = Math.tan( angleToPin) / 88.12; //88.12in is the distance from the front of the robot to horizontal line of the pin. We use that measure with the angle we found earlier to have the distance between the intersection point of the robot with the horizontal line and the pin.
-				double heightPinTurnPoint = Math.tan(30) * realDisToPin; //This the calculate the vertical distance between the pin and the point where the robot would have to do a 30° turn to get to the pin.
+				double heightPinTurnPoint = Math.tan(30) * realDisToPin; //This the calculate the vertical distance between the pin and the point where the robot would have to do a 30 degree turn to get to the pin.
 				double heightBeforeTurn= 88.12 - heightPinTurnPoint; //Using the distance previously calculated we subtract it from the total distance to get the distance the robot have to travel before having to turn.
 				timeToRun = (0.01452 * heightBeforeTurn) + 0.4; //We convert here the distance the robot have to travel in time. Based on measurements the robot is traveling 1 inch in 0.01452 sec.
 			}
@@ -261,33 +305,8 @@ public class Robot extends IterativeRobot {
 			
 			break;
 		case visionTesting:
+			//Testing 
 			
-			if(stopped) {
-				if(timer.get() <= 2) {
-					robot.drive(-0.25, 0);
-				}
-				return;
-			}
-			
-			double centerX1;
-			double speed = -0.01;
-			synchronized (imgLock) {
-				centerX1 = this.centerX;
-			}
-			double turn = centerX1 - (cam_WIDTH / 2);
-			double turn_converted = turn * 0.005;
-			double turn_threashold = 0.4;
-			
-			if(Math.abs(turn_converted) > turn_threashold) {
-				turn_converted = turn_converted<0?-turn_threashold:turn_threashold;
-			}
-			if(Math.abs(turn_converted) < 0.05) {
-				speed = 0;
-				turn_converted = 0;
-				stopped = true;
-				timer.reset();
-			}
-			robot.arcadeDrive(speed, turn_converted);
 			
 			break;
 		}
