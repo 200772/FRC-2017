@@ -1,3 +1,4 @@
+
 package org.usfirst.frc.team5541.robot;
 
 import org.opencv.core.Rect;
@@ -112,6 +113,9 @@ public class Robot extends IterativeRobot {
 	
 	Timer timer = new Timer();
 	
+	double direction = 1;
+	double timeToRun = 0;
+	
 	boolean stopped;
 	
 	@Override
@@ -220,16 +224,14 @@ public class Robot extends IterativeRobot {
 		//Intelligent autonomous
 		case customAuto3:
 			double centerX;
-			double direction = 1;
-			double timeToRun = 0;
 			
 			synchronized (imgLock){
 				centerX = this.centerX;
 			}
 			System.out.println("centerX :" + centerX);
+			System.out.println("time to run :" + timeToRun);
 
-			/*double distCenter = centerX - (cam_WIDTH/2);
-			
+			double distCenter = centerX - (cam_WIDTH/2);
 			
 			if(distCenter > 0){
 				direction=1;
@@ -238,24 +240,22 @@ public class Robot extends IterativeRobot {
 				direction=-1;
 			}
 			
+			if(timer.get()<0.4){ // all using trigonometry rules (SOH CAH TOA)
+				double angleToPin = Math.atan(distCenter/469.98); //when we use the tg formula we can find the length (in pixels) of the adjacent side of the triangle (adj=320/tg(34.25°)=469.98) which we use to find the angle between the the view to the center and the view of the point
+				double realDisToPin = Math.tan( angleToPin) / 88.12; //88.12in is the distance from the front of the robot to horizontal line of the pin. We use that measure with the angle we found earlier to have the distance between the intersection point of the robot with the horizontal line and the pin.
+				double heightPinTurnPoint = Math.tan(30) * realDisToPin; //This the calculate the vertical distance between the pin and the point where the robot would have to do a 30° turn to get to the pin.
+				double heightBeforeTurn= 88.12 - heightPinTurnPoint; //Using the distance previously calculated we subtract it from the total distance to get the distance the robot have to travel before having to turn.
+				timeToRun = (0.01452 * heightBeforeTurn) + 0.4; //We convert here the distance the robot have to travel in time. Based on measurements the robot is traveling 1 inch in 0.01452 sec.
+			}
 			
-			//if(timer.get()<0.4){ //should we do this like that? with an if timer < 0.4  to be sure the calcutions are not done twice? or is there some other method to do this?
-				double AngleToPin = Math.atan(distCenter/469.98);
-				double RealDisToPin = Math.tan( AngleToPin) / 72.87;
-				double heightPinTurnPoint = Math.tan(30) * RealDisToPin;
-				double heightBeforeTurn= 72.87 - heightPinTurnPoint;
-				timeToRun = 0.1452 * heightBeforeTurn; //0.1452 => value when robot was stopped
-				System.out.println("time to run :" + timeToRun);
-			//} */
-			
-			/*
 			if(timer.get() <= timeToRun) {
 				robot.drive(-0.5, 0);
 			}
-			if(timer.get() <= timeToRun+0.4){
+			if(timer.get() >timeToRun
+					&& timer.get() <= timeToRun+0.4){
 				robot.drive(-0.5, direction * 0.9); //angular speed to be calculated!!!
 			}
-*/
+			
 			//to add:   - detection of how big the marks are to evaluate distance
 			//			- adding alignment code (Jack)
 			
