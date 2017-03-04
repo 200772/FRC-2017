@@ -51,16 +51,16 @@ public class GripPipeline implements VisionPipeline {
 
 		// Step HSV_Threshold0:
 		Mat hsvThresholdInput = resizeImageOutput;
-		double[] hsvThresholdHue = {22.66187050359712, 44.84641638225258};
-		double[] hsvThresholdSaturation = {0.0, 20.017064846416375};
-		double[] hsvThresholdValue = {233.90287769784172, 255.0};
+		double[] hsvThresholdHue = {29.136690647482013, 57.133105802047794};
+		double[] hsvThresholdSaturation = {0.0, 35.247440273037554};
+		double[] hsvThresholdValue = {236.19604316546764, 255.0};
 		hsvThreshold(hsvThresholdInput, hsvThresholdHue, hsvThresholdSaturation, hsvThresholdValue, hsvThresholdOutput);
 
 		// Step CV_erode0:
 		Mat cvErodeSrc = hsvThresholdOutput;
 		Mat cvErodeKernel = new Mat();
 		Point cvErodeAnchor = new Point(-1, -1);
-		double cvErodeIterations = 2.0;
+		double cvErodeIterations = 1.0;
 		int cvErodeBordertype = Core.BORDER_CONSTANT;
 		Scalar cvErodeBordervalue = new Scalar(-1);
 		cvErode(cvErodeSrc, cvErodeKernel, cvErodeAnchor, cvErodeIterations, cvErodeBordertype, cvErodeBordervalue, cvErodeOutput);
@@ -72,11 +72,11 @@ public class GripPipeline implements VisionPipeline {
 
 		// Step Filter_Contours0:
 		ArrayList<MatOfPoint> filterContoursContours = findContoursOutput;
-		double filterContoursMinArea = 500.0;
-		double filterContoursMinPerimeter = 70.0;
-		double filterContoursMinWidth = 0.0;
-		double filterContoursMaxWidth = 100.0;
-		double filterContoursMinHeight = 0.0;
+		double filterContoursMinArea = 0;
+		double filterContoursMinPerimeter = 0;
+		double filterContoursMinWidth = 0;
+		double filterContoursMaxWidth = 1000;
+		double filterContoursMinHeight = 0;
 		double filterContoursMaxHeight = 1000;
 		double[] filterContoursSolidity = {0, 100};
 		double filterContoursMaxVertices = 1000000;

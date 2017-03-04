@@ -8,14 +8,15 @@ import org.opencv.core.Rect;
 import org.opencv.imgproc.Imgproc;
 
 import com.ctre.CANTalon;
-
 import edu.wpi.cscore.CvSource;
 import edu.wpi.cscore.UsbCamera;
 import edu.wpi.first.wpilibj.CameraServer;
 import edu.wpi.first.wpilibj.IterativeRobot;
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.RobotDrive;
+import edu.wpi.first.wpilibj.Solenoid;
 import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.VictorSP;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.vision.VisionThread;
@@ -31,12 +32,18 @@ public class Robot extends IterativeRobot {
 	RobotDrive robot;
 	
 	Joystick stick;
-	//Joystick flight;
+	Joystick flight;
 	
 	int index_rightTalon = 1;
 	int index_rightSlaveTalon = 2;
 	int index_leftTalon = 3;
 	int index_leftSlaveTalon = 4;
+	
+	int index_winch = 12;
+	
+	int index_solenoid_left = 0;
+	int index_solenoid_right = 1;
+	int index_solenoid_back = 2;
 	
 	final String defaultAuto = "right";
 	final String customAuto = "left";
@@ -55,6 +62,11 @@ public class Robot extends IterativeRobot {
 	private final Object imgLock = new Object();
 	
 	private ArrayList<MatOfPoint> imageMats = new ArrayList<>();
+	
+	VictorSP winch;
+	Solenoid solenoid_left;
+	Solenoid solenoid_right;
+	Solenoid solenoid_back;
 	/**
 	 * This function is run when the robot is first started up and should be
 	 * used for any initialization code.
@@ -62,15 +74,14 @@ public class Robot extends IterativeRobot {
 	@Override
 	public void robotInit() {
 		UsbCamera camera = CameraServer.getInstance().startAutomaticCapture(0);
-		UsbCamera camera2 = CameraServer.getInstance().startAutomaticCapture(1);
+		//UsbCamera camera2 = CameraServer.getInstance().startAutomaticCapture(1);
 	    camera.setResolution(cam_WIDTH, cam_HEIGHT);
-	    camera2.setResolution(cam_WIDTH, cam_HEIGHT);
+	    //camera2.setResolution(cam_WIDTH, cam_HEIGHT);
 	    
 	    CvSource outputStream = CameraServer.getInstance().putVideo("Computer Vision", cam_WIDTH, cam_HEIGHT);
 	    
 	    visionThread = new VisionThread(camera, new GripPipeline(), pipeline -> {
-	    	
-	        if (pipeline.filterContoursOutput().size() > 0) {
+	        if (pipeline.filterContoursOutput().size() == 2) {
 	            Rect a = Imgproc.boundingRect(pipeline.filterContoursOutput().get(0));
 	            synchronized (imgLock) {
 	            	centerX = a.x + (a.width / 2);
@@ -79,7 +90,7 @@ public class Robot extends IterativeRobot {
 	            }
 	        }
 	        synchronized (imgLock) {
-	        	outputStream.putFrame(pipeline.cvErodeOutput());
+	        	outputStream.putFrame(pipeline.hsvThresholdOutput());
             }
 	    });
 	    visionThread.start();
@@ -93,7 +104,7 @@ public class Robot extends IterativeRobot {
 		SmartDashboard.putData("Auto choices", chooser);
 		
 		stick = new Joystick(0);
-		//flight = new Joystick(1);
+		flight = new Joystick(1);
 		
 		CANTalon rightTalon = new CANTalon(index_rightTalon);
 		CANTalon rightSlaveTalon = new CANTalon(index_rightSlaveTalon);
@@ -101,6 +112,21 @@ public class Robot extends IterativeRobot {
 		CANTalon leftSlaveTalon = new CANTalon(index_leftSlaveTalon);
 		
 		robot = new RobotDrive(rightTalon, rightSlaveTalon, leftTalon, leftSlaveTalon);
+		
+		/*Jack - I changed this to a victor SP controller, 
+		 * it is less error prone and doesn't clutter your can bus by using a PWM controller
+		 * -Josh
+		 */
+		winch = new VictorSP(0);
+		
+		/* Jack
+		 * When declaring the Solendoid object, you have to tell it what channel it is on
+		 * Follows Solenoid(Channel, Port)
+		 * -Josh
+		 */
+		solenoid_left = new Solenoid(1, index_solenoid_left);
+		solenoid_right = new Solenoid(1, index_solenoid_right);
+		solenoid_back = new Solenoid(1, index_solenoid_back);
 	}
 
 	/**
@@ -187,7 +213,7 @@ public class Robot extends IterativeRobot {
 			
 			//Initial Routing to peg
 			if(timer.get() <= 1.3) {
-				robot.drive(-0.6, 0);
+				robot.drive(-0.5, 0);
 			} 
 			if(timer.get() > 1.3 
 					&& timer.get() <= 1.7) {
@@ -285,7 +311,8 @@ public class Robot extends IterativeRobot {
 			}
 			
 			if(timer.get()<0.4){ // all using trigonometry rules (SOH CAH TOA)
-				double angleToPin = Math.atan(distCenter/469.98); //when we use the tg formula we can find the length (in pixels) of the adjacent side of the triangle (adj=320/tg(34.25 degree)=469.98) which we use to find the angle between the the view to the center and the view of the point
+				double referenceDistance = (cam_WIDTH/2)/Math.tan(34.25);//The reference distance is a distance to have a second fixed value to be able to calculate the angle with which the camera detects the pin.
+				double angleToPin = Math.atan(distCenter/referenceDistance); //when we use the tg formula we can find the length (in pixels) of the adjacent side of the triangle (adj=320/tg(34.25 degree)=469.98) which we use to find the angle between the the view to the center and the view of the point
 				double realDisToPin = Math.tan( angleToPin) / 88.12; //88.12in is the distance from the front of the robot to horizontal line of the pin. We use that measure with the angle we found earlier to have the distance between the intersection point of the robot with the horizontal line and the pin.
 				double heightPinTurnPoint = Math.tan(30) * realDisToPin; //This the calculate the vertical distance between the pin and the point where the robot would have to do a 30 degree turn to get to the pin.
 				double heightBeforeTurn= 88.12 - heightPinTurnPoint; //Using the distance previously calculated we subtract it from the total distance to get the distance the robot have to travel before having to turn.
@@ -306,8 +333,6 @@ public class Robot extends IterativeRobot {
 			break;
 		case visionTesting:
 			//Testing 
-			
-			
 			break;
 		}
 	}
@@ -319,6 +344,38 @@ public class Robot extends IterativeRobot {
 	public void teleopPeriodic() {
 		//robot.arcadeDrive(flight);
 		robot.tankDrive(stick.getRawAxis(1), stick.getRawAxis(5));
+		
+		double max = 0.8;
+		double speed = stick.getRawAxis(3)>max?max:stick.getRawAxis(3);
+		winch.set(speed);
+		
+		//A = 1
+		//B = 2
+		//TODO Map to flight stick, add safety to prevent double activation
+		
+		//Left and right solenoid
+		if(stick.getRawButton(1)) {
+			solenoid_left.set(true);
+			solenoid_right.set(true);
+		} else {
+			solenoid_left.set(false);
+			solenoid_right.set(false);
+		}
+		
+		//Back solenoid
+		if(stick.getRawButton(2)) {
+			solenoid_back.set(true);
+		} else {
+			solenoid_back.set(false);
+		}
+		
+		/*
+		if(flight.getRawAxis(1) > 0.1) {
+			solenoid.set(true);
+		} else {
+			solenoid.set(false); 
+		}
+		*/
 		//robot.arcadeDrive(stick);
 		//flight stick, 0 x axis, 1 y axis
 	}
