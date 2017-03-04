@@ -42,6 +42,8 @@ public class Robot extends IterativeRobot {
 	final String customAuto = "left";
 	final String customAuto2 = "straight";
 	final String customAuto3 = "ultimate";
+	final String customAuto4 = "back_left_straight";
+	final String customAuto5 = "back_right_straight";
 	final String visionTesting = "vision";
 
 	String autoSelected;
@@ -160,7 +162,7 @@ public class Robot extends IterativeRobot {
 			} 
 			if(timer.get() > 1.16 
 					&& timer.get() <= 1.56) {
-				robot.drive(-0.5, -0.9);
+				robot.drive(0, -0.9);
 			} 
 			if(timer.get() > 1.56 
 					&& timer.get() <= 2) {
@@ -171,6 +173,42 @@ public class Robot extends IterativeRobot {
 			}
 			
 			break;
+		
+		//Drive backwards from peg, facing right, to gear loader on opposite side of field
+		case customAuto4:
+			
+			if(timer.get() <= 1.5) {
+				robot.drive(0.5, 0);
+			}
+			if(timer.get() > 2
+					&& timer.get() <= 4) {
+				robot.drive(-0.5, -0.9);
+			}
+			if(timer.get() > 4
+					&& timer.get() <= 6) {
+				robot.drive(-0.5, 0);
+			}
+			if(timer.get() > 6) {
+				robot.drive(0, 0);
+			}
+			
+		//Drive backwards from peg, facing left, to gear loader on opposite side of field
+		case customAuto5:
+			
+			if(timer.get() <= 1.5) {
+				robot.drive(0.5, 0);
+			}
+			if(timer.get() > 2
+					&& timer.get() <= 4) {
+				robot.drive(-0.5, 0.9);
+			}
+			if(timer.get() > 4
+					&& timer.get() <= 6) {
+				robot.drive(-0.5, 0);
+			}
+			if(timer.get() > 6) {
+				robot.drive(0, 0);
+			}
 			
 		//on the left side of the field + vision processing
 		case defaultAuto:
