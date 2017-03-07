@@ -39,7 +39,8 @@ public class Robot extends IterativeRobot {
 	int index_leftTalon = 3;
 	int index_leftSlaveTalon = 4;
 	
-	int index_winch = 12;
+	int index_winch = 0;
+	int index_winch2 = 1;
 	
 	int index_solenoid_left = 0;
 	int index_solenoid_right = 1;
@@ -64,6 +65,8 @@ public class Robot extends IterativeRobot {
 	private ArrayList<MatOfPoint> imageMats = new ArrayList<>();
 	
 	VictorSP winch;
+	VictorSP winch2;
+	
 	Solenoid solenoid_left;
 	Solenoid solenoid_right;
 	Solenoid solenoid_back;
@@ -74,23 +77,25 @@ public class Robot extends IterativeRobot {
 	@Override
 	public void robotInit() {
 		UsbCamera camera = CameraServer.getInstance().startAutomaticCapture(0);
-		//UsbCamera camera2 = CameraServer.getInstance().startAutomaticCapture(1);
+		UsbCamera camera2 = CameraServer.getInstance().startAutomaticCapture(1);
 	    camera.setResolution(cam_WIDTH, cam_HEIGHT);
-	    //camera2.setResolution(cam_WIDTH, cam_HEIGHT);
+	    camera2.setResolution(cam_WIDTH, cam_HEIGHT);
 	    
 	    CvSource outputStream = CameraServer.getInstance().putVideo("Computer Vision", cam_WIDTH, cam_HEIGHT);
 	    
 	    visionThread = new VisionThread(camera, new GripPipeline(), pipeline -> {
-	        if (pipeline.filterContoursOutput().size() == 2) {
+	        if (pipeline.filterContoursOutput().size() > 0) {
 	            Rect a = Imgproc.boundingRect(pipeline.filterContoursOutput().get(0));
 	            synchronized (imgLock) {
 	            	centerX = a.x + (a.width / 2);
-	            	imageMats.clear();
-	            	imageMats.addAll(pipeline.filterContoursOutput());
+	            	//imageMats.clear();
+	            	//imageMats.addAll(pipeline.filterContoursOutput());
+	            	System.out.println("Found center");
 	            }
 	        }
 	        synchronized (imgLock) {
-	        	outputStream.putFrame(pipeline.hsvThresholdOutput());
+	        	outputStream.putFrame(pipeline.cvErodeOutput());
+	        	System.out.println("Frame Published");
             }
 	    });
 	    visionThread.start();
@@ -108,6 +113,11 @@ public class Robot extends IterativeRobot {
 		
 		CANTalon rightTalon = new CANTalon(index_rightTalon);
 		CANTalon rightSlaveTalon = new CANTalon(index_rightSlaveTalon);
+		rightTalon.setInverted(true);
+		rightSlaveTalon.setInverted(true);
+		rightTalon.reverseOutput(true);
+		rightSlaveTalon.reverseOutput(true);
+		
 		CANTalon leftTalon = new CANTalon(index_leftTalon);
 		CANTalon leftSlaveTalon = new CANTalon(index_leftSlaveTalon);
 		
@@ -117,7 +127,8 @@ public class Robot extends IterativeRobot {
 		 * it is less error prone and doesn't clutter your can bus by using a PWM controller
 		 * -Josh
 		 */
-		winch = new VictorSP(0);
+		winch = new VictorSP(index_winch);
+		winch2 = new VictorSP(index_winch2);
 		
 		/* Jack
 		 * When declaring the Solendoid object, you have to tell it what channel it is on
@@ -127,6 +138,8 @@ public class Robot extends IterativeRobot {
 		solenoid_left = new Solenoid(1, index_solenoid_left);
 		solenoid_right = new Solenoid(1, index_solenoid_right);
 		solenoid_back = new Solenoid(1, index_solenoid_back);
+		
+		
 	}
 
 	/**
@@ -232,7 +245,7 @@ public class Robot extends IterativeRobot {
 				//Vision Tracking
 				double centerX;
 				ArrayList<MatOfPoint> points;
-				double speed = -0.01;
+				double speed = -0.05;
 				
 				synchronized (imgLock) {
 					centerX = this.centerX;
@@ -345,19 +358,25 @@ public class Robot extends IterativeRobot {
 		//robot.arcadeDrive(flight);
 		robot.tankDrive(stick.getRawAxis(1), stick.getRawAxis(5));
 		
-		double max = 0.8;
-		double speed = stick.getRawAxis(3)>max?max:stick.getRawAxis(3);
+		double speed = Math.abs(flight.getRawAxis(1));
 		winch.set(speed);
+		winch2.set(speed);
 		
 		//A = 1
 		//B = 2
 		//TODO Map to flight stick, add safety to prevent double activation
-		
+		/*int frontSolenoidToggle = 0;
+		if(stick.getRawButton(1) && frontSolenoidToggle == 0) {
+			frontSolenoidToggle = 1;
+		} else if (stick.getRawButton(1) && frontSolenoidToggle == 1) {
+			frontSolenoidToggle = 0;
+		}*/
 		//Left and right solenoid
+		/*
 		if(stick.getRawButton(1)) {
 			solenoid_left.set(true);
 			solenoid_right.set(true);
-		} else {
+		} else if (stick.getRawButton(2)) {
 			solenoid_left.set(false);
 			solenoid_right.set(false);
 		}
@@ -368,7 +387,7 @@ public class Robot extends IterativeRobot {
 		} else {
 			solenoid_back.set(false);
 		}
-		
+		*/
 		/*
 		if(flight.getRawAxis(1) > 0.1) {
 			solenoid.set(true);
