@@ -46,14 +46,18 @@ public class Robot extends IterativeRobot {
 	int index_solenoid_right = 1;
 	int index_solenoid_back = 2;
 	
-	final String defaultAuto = "right";
-	final String customAuto = "left";
-	final String customAuto2 = "straight";
-	final String customAuto3 = "ultimate";
-	final String visionTesting = "vision";
+	final String defaultAuto = "Vision Right"; //vision right
+	final String customAuto = "Left"; //left
+	final String customAuto2 = "Straight"; //straight
+	final String customAuto3 = "Ultimate"; //ultimate
+	final String customAuto4 = "Right"; //right
+	final String visionLeft = "Vision Left"; //vision left
+	final String placeholder = "Default (Nothing)";
 
 	String autoSelected;
 	SendableChooser<String> chooser = new SendableChooser<>();
+	//SmartDashboard dash = new SmartDashboard();
+	//String automodeselected;
 
 	private VisionThread visionThread;
 	private double centerX = 0.0;
@@ -90,23 +94,26 @@ public class Robot extends IterativeRobot {
 	            	centerX = a.x + (a.width / 2);
 	            	//imageMats.clear();
 	            	//imageMats.addAll(pipeline.filterContoursOutput());
-	            	System.out.println("Found center");
 	            }
 	        }
 	        synchronized (imgLock) {
 	        	outputStream.putFrame(pipeline.cvErodeOutput());
-	        	System.out.println("Frame Published");
             }
 	    });
 	    visionThread.start();
         
-		chooser.addDefault("Right", defaultAuto);
+		chooser.addDefault("Right", customAuto4);
 		chooser.addObject("Left", customAuto);
 		chooser.addObject("Straight", customAuto2);
 		chooser.addObject("Ultimate", customAuto3);
-		chooser.addObject("Vision", visionTesting);
+		chooser.addObject("Vision Right", defaultAuto);
+		chooser.addObject("Vision Left", visionLeft);
+		//chooser.addDefault("Default (Nothing)", placeholder);
 
 		SmartDashboard.putData("Auto choices", chooser);
+		
+		//String[] choices = {defaultAuto, customAuto, customAuto2, customAuto3, customAuto4, visionLeft};
+		//dash.putStringArray("Auto Selector", choices);
 		
 		stick = new Joystick(0);
 		flight = new Joystick(1);
@@ -180,6 +187,12 @@ public class Robot extends IterativeRobot {
 	
 	@Override
 	public void autonomousPeriodic() {
+		//automodeselected = dash.getString("Auto Selector");
+		
+		//if(autoSelected == placeholder) {
+		//	autoSelected = automodeselected;
+		//}
+		
 		switch (autoSelected) {
 		
 		//Straight to pin
@@ -191,7 +204,29 @@ public class Robot extends IterativeRobot {
 			
 			break;
 			
+		//on the left side of the field
+		//TURNS RIGHT
+		case customAuto4:
+			
+			if(timer.get() <= 1.16) {
+				robot.drive(-0.6, 0);
+			} 
+			if(timer.get() > 1.16 
+					&& timer.get() <= 1.56) {
+				robot.drive(-0.5, 0.9);
+			} 
+			if(timer.get() > 1.56 
+					&& timer.get() <= 2) {
+				robot.drive(-0.5, 0);
+			}
+			if(timer.get() > 2) {
+				robot.drive(0, 0);
+			}
+			
+			break;
+			
 		//on the right side of the field
+		//TURNS LEFT
 		case customAuto:
 			
 			if(timer.get() <= 1.16) {
@@ -211,7 +246,99 @@ public class Robot extends IterativeRobot {
 			
 			break;
 			
+		//TURNS LEFT
+		case visionLeft:
+			//Jack's Autonomous
+			
+			//Drive forward when target is found
+			if(stopped) {
+				if(timer.get() <= 2) {
+					robot.drive(-0.25, 0);
+				}
+				return;
+			}
+			
+			//Initial Routing to peg
+			if(timer.get() <= 1.3) {
+				robot.drive(-0.5, 0);
+			} 
+			if(timer.get() > 1.3 
+					&& timer.get() <= 1.7) {
+				robot.drive(-0.5, -0.9);
+			} 
+			if(timer.get() > 1.7 
+					&& timer.get() <= 1.9) {
+				robot.drive(-0.5, 0);
+			}
+			if(timer.get() > 1.9 
+					&& timer.get() <= 2.24) {
+				//Do nothing
+				System.out.println("Pause before search");
+			}
+			if(timer.get() > 2.24) {
+				//Vision Tracking
+				double centerX;
+				ArrayList<MatOfPoint> points;
+				double speed = -0.05;
+				
+				synchronized (imgLock) {
+					centerX = this.centerX;
+					points = (ArrayList<MatOfPoint>) this.imageMats.clone();
+				}
+				
+				double turn = 0;
+				
+				//If amount of points is exactly 2 then continue
+				if(points.size() == 2) {
+					
+					//Check if the 2 points are similar enough to be the goal
+					Rect a = Imgproc.boundingRect(points.get(0));
+					Rect b = Imgproc.boundingRect(points.get(1));
+					
+					double give = 0.1;
+					//Check similar width
+					if(a.width + (a.width * give) > b.width &&
+							a.width - (a.width * give) < b.width) {
+						//Check similar height
+						if(a.height + (a.height * give) > b.height &&
+								a.height - (a.height * give) < b.height) {
+							//Both height and width are similar enough
+							//Find center point between the 2 rects
+							double ca = a.x + (a.width / 2);
+							double cb = b.x + (b.width / 2);
+							
+							double dual = (ca + cb) / 2;
+							
+							turn = dual - (cam_WIDTH / 2);
+							
+							stopped = true;
+							timer.reset();
+							
+						} else { turn = timer.get() % 2 == 0?50:-50; }
+					} else { turn = timer.get() % 2 == 0?50:-50; }
+					
+					/*
+					double turn_threashold = 0.4;
+					double turn_con = turn * 0.005;
+					
+					//If the turn size is greater than threashold then limit it
+					if(Math.abs(turn_con) > turn_threashold) {
+						turn = turn_con<0?-turn_threashold:turn_threashold;
+					}
+					*/
+				} else {
+					//Scan back and forth at 0.25 turn
+					turn = timer.get() % 2 == 0?30:-30;
+				}
+				
+				robot.arcadeDrive(speed, turn * 0.005);
+
+			}
+			//System.out.println(turn + " : " + (turn_converted));
+			break;
+			
 		//on the left side of the field + vision processing
+		//TURNS RIGHT
 		case defaultAuto:
 		default:
 			//Jack's Autonomous
@@ -304,6 +431,7 @@ public class Robot extends IterativeRobot {
 			break;
 			
 		//Intelligent autonomous
+		//ARNAUDS
 		case customAuto3:
 			//Arnaud's Autonomous
 			double centerX;
@@ -343,9 +471,6 @@ public class Robot extends IterativeRobot {
 			//to add:   - detection of how big the marks are to evaluate distance
 			//			- adding alignment code (Jack)
 			
-			break;
-		case visionTesting:
-			//Testing 
 			break;
 		}
 	}
