@@ -1,4 +1,3 @@
-
 package org.usfirst.frc.team5541.robot;
 
 import java.util.ArrayList;
@@ -379,7 +378,7 @@ public class Robot extends IterativeRobot {
 					points = (ArrayList<MatOfPoint>) this.imageMats.clone();
 				}
 				
-				double turn = 0;
+				double turn = timer.get() % 2 == 0?50:-50;
 				
 				//If amount of points is exactly 2 then continue
 				if(points.size() == 2) {
@@ -407,21 +406,8 @@ public class Robot extends IterativeRobot {
 							stopped = true;
 							timer.reset();
 							
-						} else { turn = timer.get() % 2 == 0?50:-50; }
-					} else { turn = timer.get() % 2 == 0?50:-50; }
-					
-					/*
-					double turn_threashold = 0.4;
-					double turn_con = turn * 0.005;
-					
-					//If the turn size is greater than threashold then limit it
-					if(Math.abs(turn_con) > turn_threashold) {
-						turn = turn_con<0?-turn_threashold:turn_threashold;
+						}
 					}
-					*/
-				} else {
-					//Scan back and forth at 0.25 turn
-					turn = timer.get() % 2 == 0?30:-30;
 				}
 				
 				robot.arcadeDrive(speed, turn * 0.005);
@@ -474,7 +460,6 @@ public class Robot extends IterativeRobot {
 			break;
 		}
 	}
-
 	/**
 	 * This function is called periodically during operator control
 	 */
@@ -531,4 +516,3 @@ public class Robot extends IterativeRobot {
 	public void testPeriodic() {
 	}
 }
-
