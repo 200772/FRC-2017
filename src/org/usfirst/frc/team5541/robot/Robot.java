@@ -50,6 +50,8 @@ public class Robot extends IterativeRobot {
 	final String customAuto2 = "Straight"; //straight
 	final String customAuto3 = "Ultimate"; //ultimate
 	final String customAuto4 = "Right"; //right
+	final String TeleopSetupRightSide = "Teleop Setup RightSide"; //teleop setup rightside
+	final String TeleopSetupLeftSide = "Teleop Setup LeftSide"; //teleop setup leftside
 	final String visionLeft = "Vision Left"; //vision left
 	final String visionRight = "Vision Right"; //vision right
 
@@ -106,6 +108,8 @@ public class Robot extends IterativeRobot {
 		chooser.addObject("Left", customAuto);
 		chooser.addObject("Straight", customAuto2);
 		chooser.addObject("Ultimate", customAuto3);
+		chooser.addObject("Teleop Setup sideRight", TeleopSetupRightSide);
+		chooser.addObject("Teleop Setup sideLeft", TeleopSetupLeftSide);
 		chooser.addObject("Vision Right", visionRight);
 		chooser.addObject("Vision Left", visionLeft);
 		//chooser.addDefault("Default (Nothing)", placeholder);
@@ -246,6 +250,40 @@ public class Robot extends IterativeRobot {
 			
 			break;
 			
+			/* 
+			 * After attempting gear on right most peg robot will 
+			 * start to go across the field to gear loading station.
+			 */
+			case TeleopSetupRightSide:
+				if(timer.get() <= 0.5) {
+					robot.drive(0.5, 0);
+				}
+				if(timer.get() > 0.5
+						&& timer.get() <= 0.9) {
+					robot.drive(-0.5, -0.9);
+				}
+				if(timer.get() > 0.9
+						&& timer.get() <= 1.9) {
+					robot.drive(-0.5, 0);
+				}
+				
+				break;
+				
+			case TeleopSetupLeftSide:
+				if(timer.get() <= 0.5) {
+					robot.drive(0.5, 0);
+				}
+				if(timer.get() > 0.5
+						&& timer.get() <= 0.9) {
+					robot.drive(-0.5, 0.9);
+				}
+				if(timer.get() > 0.9
+						&& timer.get() <= 1.9) {
+					robot.drive(-0.5, 0);
+				}
+				
+				break;
+				
 		//TURNS LEFT
 		case visionLeft:
 			//Place here when work
@@ -349,7 +387,7 @@ public class Robot extends IterativeRobot {
 				direction=1;
 			}
 			else if(distCenter < 0){
-				direction=-1;
+				direction=-1;c xn 
 			}
 			
 			if(timer.get()<0.4){ // all using trigonometry rules (SOH CAH TOA)
@@ -375,6 +413,7 @@ public class Robot extends IterativeRobot {
 			break;
 		}
 	}
+	
 	/**
 	 * This function is called periodically during operator control
 	 */
