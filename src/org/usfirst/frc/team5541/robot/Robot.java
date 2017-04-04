@@ -41,9 +41,8 @@ public class Robot extends IterativeRobot {
 	int index_winch = 0;
 	int index_winch2 = 1;
 	
-	int index_solenoid_left = 0;
-	int index_solenoid_right = 1;
-	int index_solenoid_back = 2;
+	int index_solenoid_up = 0;
+	int index_solenoid_out = 1;
 	
 	final String defaultAuto = "Default"; //default
 	final String customAuto = "Left"; //left
@@ -73,9 +72,8 @@ public class Robot extends IterativeRobot {
 	VictorSP winch;
 	VictorSP winch2;
 	
-	Solenoid solenoid_left;
-	Solenoid solenoid_right;
-	Solenoid solenoid_back;
+	Solenoid solenoid_up;
+	Solenoid solenoid_out;
 	/**
 	 * This function is run when the robot is first started up and should be
 	 * used for any initialization code.
@@ -88,18 +86,20 @@ public class Robot extends IterativeRobot {
 	    camera2.setResolution(cam_WIDTH, cam_HEIGHT);
 	    
 	    CvSource outputStream = CameraServer.getInstance().putVideo("Computer Vision", cam_WIDTH, cam_HEIGHT);
+	    CvSource outputStream2 = CameraServer.getInstance().putVideo("XDFGBHKJNLK", cam_WIDTH, cam_HEIGHT);
 	    
 	    visionThread = new VisionThread(camera, new GripPipeline(), pipeline -> {
 	        if (pipeline.filterContoursOutput().size() > 0) {
 	            Rect a = Imgproc.boundingRect(pipeline.filterContoursOutput().get(0));
 	            synchronized (imgLock) {
 	            	centerX = a.x + (a.width / 2);
+	            	System.out.println(pipeline.filterContoursOutput().size());
 	            	//imageMats.clear();
 	            	//imageMats.addAll(pipeline.filterContoursOutput());
 	            }
 	        }
 	        synchronized (imgLock) {
-	        	outputStream.putFrame(pipeline.cvErodeOutput());
+	        	outputStream2.putFrame(pipeline.resizeImageOutput());
             }
 	    });
 	    visionThread.start();
@@ -146,9 +146,8 @@ public class Robot extends IterativeRobot {
 		 * Follows Solenoid(Channel, Port)
 		 * -Josh
 		 */
-		solenoid_left = new Solenoid(1, index_solenoid_left);
-		solenoid_right = new Solenoid(1, index_solenoid_right);
-		solenoid_back = new Solenoid(1, index_solenoid_back);
+		solenoid_up = new Solenoid(1, index_solenoid_up);
+		solenoid_out = new Solenoid(1, index_solenoid_out);
 		
 		
 	}
@@ -387,7 +386,7 @@ public class Robot extends IterativeRobot {
 				direction=1;
 			}
 			else if(distCenter < 0){
-				direction=-1;c xn 
+				direction=-1;
 			}
 			
 			if(timer.get()<0.4){ // all using trigonometry rules (SOH CAH TOA)
@@ -426,41 +425,20 @@ public class Robot extends IterativeRobot {
 		winch.set(speed);
 		winch2.set(speed);
 		
-		//A = 1
-		//B = 2
-		//TODO Map to flight stick, add safety to prevent double activation
-		/*int frontSolenoidToggle = 0;
-		if(stick.getRawButton(1) && frontSolenoidToggle == 0) {
-			frontSolenoidToggle = 1;
-		} else if (stick.getRawButton(1) && frontSolenoidToggle == 1) {
-			frontSolenoidToggle = 0;
-		}*/
-		//Left and right solenoid
-		/*
-		if(stick.getRawButton(1)) {
-			solenoid_left.set(true);
-			solenoid_right.set(true);
-		} else if (stick.getRawButton(2)) {
-			solenoid_left.set(false);
-			solenoid_right.set(false);
-		}
+		int button_a = 5; //LB 
+		int button_b = 6; //RB
 		
-		//Back solenoid
-		if(stick.getRawButton(2)) {
-			solenoid_back.set(true);
-		} else {
-			solenoid_back.set(false);
-		}
-		*/
 		/*
-		if(flight.getRawAxis(1) > 0.1) {
-			solenoid.set(true);
-		} else {
-			solenoid.set(false); 
+		int frontSolenoidToggle = 0;
+		if(stick.getRawButton(button_a) && frontSolenoidToggle == 0) {
+			frontSolenoidToggle = 1;
+		} else if (stick.getRawButton(button_b) && frontSolenoidToggle == 1) {
+			frontSolenoidToggle = 0;
 		}
 		*/
-		//robot.arcadeDrive(stick);
-		//flight stick, 0 x axis, 1 y axis
+		System.out.println(stick.getRawButton(button_a) + " : " + stick.getRawButton(button_b));
+		solenoid_up.set(stick.getRawButton(button_a));
+		solenoid_out.set(stick.getRawButton(button_b));
 	}
 
 	/**
